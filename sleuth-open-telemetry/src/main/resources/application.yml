@@ -1,0 +1,21 @@
+server:
+  port: 9001
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+
+spring:
+  application:
+    name: sleuth-open-telemetry
+  sleuth:
+    sampler:
+      probability: 1.0
+    otel:
+      config:
+        trace-id-ratio-based: 1.0
+      exporter:
+        otlp:
+          endpoint: ${OTEL_URL:http://localhost:55680}

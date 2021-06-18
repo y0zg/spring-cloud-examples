@@ -1,0 +1,78 @@
+version: "3.8"
+services:
+
+  grafana:
+    image: grafana/grafana:8.0.1
+    container_name: grafana
+    depends_on:
+      - loki
+      - prometheus
+      - tempo
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: password
+    volumes:
+      - ./platform-config/grafana/datasource.yml:/etc/grafana/provisioning/datasources/datasource.yml
+      - ./platform-config/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - grafana-data:/var/lib/grafana
+
+  prometheus:
+    image: prom/prometheus:v2.27.1
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - "./platform-config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml"
+
+  loki:
+    image: grafana/loki:2.2.1
+    container_name: loki
+    command: -config.file=/etc/loki/local-config.yaml
+    depends_on:
+      - fluent-bit
+    ports:
+      - "3100:3100"
+
+  fluent-bit:
+    image: grafana/fluent-bit-plugin-loki:main
+    container_name: fluent-bit
+    ports:
+      - "24224:24224"
+      - "24224:24224/udp"
+    environment:
+      - LOKI_URL=http://loki:3100/loki/api/v1/push
+    volumes:
+      - ./platform-config/fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf
+
+  tempo:
+    image: grafana/tempo:1.0.0
+    container_name: tempo
+    command: -config.file /etc/tempo-config.yml
+    volumes:
+      - ./platform-config/tempo/tempo.yml:/etc/tempo-config.yml
+    ports:
+      - "3100"            # Tempo
+      - "9411:9411"       # Zipkin
+      - "55680:55680"     # OTLP gRPC
+      - "55681:55681"     # OTLP HTTP
+
+  sleuth-open-telemetry:
+    image: sleuth-open-telemetry:0.0.1-SNAPSHOT
+    container_name: sleuth-open-telemetry
+    depends_on:
+      - fluent-bit
+    ports:
+      - "9001:9001"
+    environment:
+      - BPL_JVM_THREAD_COUNT=50
+      - OTEL_URL=http://tempo:55680
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: 127.0.0.1:24224
+
+volumes:
+  grafana-data:
+    name: grafana-data
