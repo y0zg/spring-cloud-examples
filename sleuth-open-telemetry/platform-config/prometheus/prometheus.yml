@@ -7,6 +7,6 @@ scrape_configs:
     scrape_interval: 2s
     metrics_path: '/actuator/prometheus'
     static_configs:
-      - targets: [ 'host.docker.internal:9001' ]
+      - targets: [ 'sleuth-open-telemetry:9001' ]
         labels:
           application: 'sleuth-open-telemetry'
