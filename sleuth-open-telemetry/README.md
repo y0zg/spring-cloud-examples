@@ -46,7 +46,7 @@ thanks to the Spring Boot Actuator library. Distributed tracing is enabled throu
 
 **Grafana** lets you query and visualize logs, metrics, and traces from your applications. After running
 the Docker Compose configuration as explained in the previous section, you can access Grafana on port 3000.
-It provides already dashboards to visualize metrics from Spring Boot.
+It provides already dashboards to visualize metrics from Spring Boot ([JVM Micrometer](https://grafana.com/grafana/dashboards/4701)).
 In the "Explore" panel, you can query logs from Loki, metrics from Prometheus, and traces from Tempo.
 
 **Fluent Bit** collects logs from all containers and forwards them to Loki.
