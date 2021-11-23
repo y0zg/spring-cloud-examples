@@ -1,39 +1,53 @@
 version: "3.8"
 services:
 
-  grafana:
-    image: grafana/grafana:8.0.1
-    container_name: grafana
-    depends_on:
-      - loki
-      - prometheus
-      - tempo
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: otel-collector
+    command: ["--config=/etc/otel-collector-config.yml"]
     ports:
-      - "3000:3000"
-    environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: password
+      - "55680:55680/tcp"
+      - "55681:55681/tcp"
+      - "55678:55678/tcp"
+      - "14268:14268/tcp"
+      - "4317:4317/tcp"
+      - "9411:9411/tcp"
     volumes:
-      - ./platform-config/grafana/datasource.yml:/etc/grafana/provisioning/datasources/datasource.yml
-      - ./platform-config/grafana/dashboards:/etc/grafana/provisioning/dashboards
-      - grafana-data:/var/lib/grafana
+      - ./otel-collector-config.yml:/etc/otel-collector-config.yml
 
-  prometheus:
-    image: prom/prometheus:v2.27.1
-    container_name: prometheus
-    ports:
-      - "9090:9090"
-    volumes:
-      - "./platform-config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml"
+  # grafana:
+  #   image: grafana/grafana:8.0.1
+  #   container_name: grafana
+  #   depends_on:
+  #     - loki
+  #     - prometheus
+  #     - tempo
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     GF_SECURITY_ADMIN_USER: admin
+  #     GF_SECURITY_ADMIN_PASSWORD: password
+  #   volumes:
+  #     - ./platform-config/grafana/datasource.yml:/etc/grafana/provisioning/datasources/datasource.yml
+  #     - ./platform-config/grafana/dashboards:/etc/grafana/provisioning/dashboards
+  #     - grafana-data:/var/lib/grafana
 
-  loki:
-    image: grafana/loki:2.2.1
-    container_name: loki
-    command: -config.file=/etc/loki/local-config.yaml
-    depends_on:
-      - fluent-bit
-    ports:
-      - "3100:3100"
+  # prometheus:
+  #   image: prom/prometheus:v2.27.1
+  #   container_name: prometheus
+  #   ports:
+  #     - "9090:9090"
+  #   volumes:
+  #     - "./platform-config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml"
+
+  # loki:
+  #   image: grafana/loki:2.2.1
+  #   container_name: loki
+  #   command: -config.file=/etc/loki/local-config.yaml
+  #   depends_on:
+  #     - fluent-bit
+  #   ports:
+  #     - "3100:3100"
 
   fluent-bit:
     image: grafana/fluent-bit-plugin-loki:main
@@ -41,22 +55,22 @@ services:
     ports:
       - "24224:24224"
       - "24224:24224/udp"
-    environment:
-      - LOKI_URL=http://loki:3100/loki/api/v1/push
+    # environment:
+    #   - LOKI_URL=http://loki:3100/loki/api/v1/push
     volumes:
       - ./platform-config/fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf
 
-  tempo:
-    image: grafana/tempo:1.0.0
-    container_name: tempo
-    command: -config.file /etc/tempo-config.yml
-    volumes:
-      - ./platform-config/tempo/tempo.yml:/etc/tempo-config.yml
-    ports:
-      - "3100"            # Tempo
-      - "9411:9411"       # Zipkin
-      - "55680:55680"     # OTLP gRPC
-      - "55681:55681"     # OTLP HTTP
+  # tempo:
+  #   image: grafana/tempo:1.0.0
+  #   container_name: tempo
+  #   command: -config.file /etc/tempo-config.yml
+  #   volumes:
+  #     - ./platform-config/tempo/tempo.yml:/etc/tempo-config.yml
+  #   ports:
+  #     - "3100"            # Tempo
+  #     - "9411:9411"       # Zipkin
+  #     - "55680:55680"     # OTLP gRPC
+  #     - "55681:55681"     # OTLP HTTP
 
   sleuth-open-telemetry:
     image: sleuth-open-telemetry:0.0.1-SNAPSHOT
@@ -67,7 +81,10 @@ services:
       - "9001:9001"
     environment:
       - BPL_JVM_THREAD_COUNT=50
-      - OTEL_URL=http://tempo:55680
+      - OTEL_URL=otel-collector:4317
+      # The spec says this should include http or https but python appears to have implemented differently
+      - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
+      - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=otel_sandbox_new,version=v1
     logging:
       driver: fluentd
       options:
